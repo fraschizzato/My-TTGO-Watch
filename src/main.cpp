@@ -23,6 +23,8 @@
 #include "app/fx_rates/fx_rates.h"
 #include "app/IRController/IRController.h"
 #include "app/alarm_clock/alarm_clock.h"
+#include "app/omero/omero_app.h"
+
 
 #if defined( NATIVE_64BIT )
     /**
@@ -68,6 +70,7 @@ void setup() {
     calc_app_setup();
     kodi_remote_app_setup();
     watchface_expr_setup();
+    omero_app_setup();
     /**
      * post hardware setup
      */
