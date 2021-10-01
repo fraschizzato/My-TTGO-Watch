@@ -52,7 +52,7 @@ void setup() {
     /**
      * apps here
      */
-    osmmap_app_setup();
+    /*osmmap_app_setup();
     weather_app_setup();
     stopwatch_app_setup();
     alarm_clock_setup();
@@ -69,7 +69,7 @@ void setup() {
     wifimon_app_setup();
     calc_app_setup();
     kodi_remote_app_setup();
-    watchface_expr_setup();
+    watchface_expr_setup();*/
     omero_app_setup();
     /**
      * post hardware setup

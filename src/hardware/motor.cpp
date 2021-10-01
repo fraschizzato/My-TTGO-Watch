@@ -116,9 +116,9 @@ void motor_setup( void ) {
             }     
         #elif defined( LILYGO_WATCH_2020_V1 ) || defined( LILYGO_WATCH_2020_V3 )
             pinMode(MOTOR_PIN, OUTPUT);
-            timer = timerBegin(0, 80, true);
+            timer = timerBegin(0, 10, true); //0,80,true
             timerAttachInterrupt(timer, &onTimer, true);
-            timerAlarmWrite(timer, 10000, true);
+            timerAlarmWrite(timer, 1000, true); //timer,10000,true
             timerAlarmEnable(timer);
         #endif
     #endif
