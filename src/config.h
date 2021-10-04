@@ -63,12 +63,12 @@
     /**
      * Built-in applications
      */
-    //#define ENABLE_WEBSERVER                        /** @brief To disable built-in webserver, comment this line */
-    //#define ENABLE_FTPSERVER                        /** @brief To disable built-in ftpserver, comment this line */
+    #define ENABLE_WEBSERVER                        /** @brief To disable built-in webserver, comment this line */
+    #define ENABLE_FTPSERVER                        /** @brief To disable built-in ftpserver, comment this line */
     /**
      * Enable non-latin languages support
      */
-    //#define USE_EXTENDED_CHARSET CHARSET_CYRILLIC
+    #define USE_EXTENDED_CHARSET CHARSET_CYRILLIC
     /**
      * firmeware version string
      */
