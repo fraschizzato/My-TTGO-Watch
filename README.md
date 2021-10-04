@@ -54,7 +54,7 @@ Or follow the great step by step [tutorial](https://www.youtube.com/watch?v=wUGA
 If you are interested in native Linux support, please install sdl2, curl and mosquitto dev lib and change the env to emulator_* in platformIO.
 
 ```bash
-sudo apt-get install libsdl2-dev libcurl4-gnutls-dev libmosquitto-dev
+sudo apt-get install libsdl2-dev libcurl4-gnutls-dev libmosquitto-dev build-essential
 ```
 
 # Telegram chatgroup
@@ -104,6 +104,12 @@ Cf. [contribution guide](CONTRIBUTING.md)
 ![screenshot](images/image1.png)
 ![screenshot](images/image2.png)
 ![screenshot](images/image3.png)
+
+## TTGO T-Watch 2021 ( experimental )
+
+![screenshot](images/twatch2021_img1.png)
+![screenshot](images/twatch2021_img2.png)
+![screenshot](images/twatch2021_img3.png)
 
 # Contributors
 
