@@ -6,7 +6,7 @@
 #include "hardware/hardware.h"
 #include "hardware/powermgm.h"
 
-#include "app/calc/calc_app.h"
+/*#include "app/calc/calc_app.h"
 #include "app/FindPhone/FindPhone.h"
 #include "app/example_app/example_app.h"
 #include "app/gps_status/gps_status.h"
@@ -22,7 +22,7 @@
 #include "app/activity/activity.h"
 #include "app/fx_rates/fx_rates.h"
 #include "app/IRController/IRController.h"
-#include "app/alarm_clock/alarm_clock.h"
+#include "app/alarm_clock/alarm_clock.h"*/
 #include "app/omero/omero_app.h"
 
 

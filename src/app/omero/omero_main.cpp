@@ -37,6 +37,7 @@
 #include "gui/widget_factory.h"
 #include "gui/widget_styles.h"
 #include "hardware/motor.h"
+#include "hardware/powermgm.h"
 
 #include "hardware/wifictl.h"
 #include "hardware/pmu.h"
@@ -51,7 +52,8 @@ lv_obj_t *omero_main_tile = NULL;
 lv_style_t omero_main_style;
 lv_style_t omero_id_style;
 
-lv_task_t * _omero_main_task;
+//lv_task_t * _omero_main_task;
+bool omero_powermgm_event_cb( EventBits_t event, void *arg );
 
 lv_obj_t *id_omero_cont = NULL;
 lv_obj_t *id_omero_label = NULL;
@@ -79,7 +81,7 @@ LV_FONT_DECLARE(Ubuntu_48px);
 
 bool omero_wifictl_event_cb( EventBits_t event, void *arg );
 static void enter_omero_setup_event_cb( lv_obj_t * obj, lv_event_t event );
-void omero_main_task( lv_task_t * task );
+//void omero_main_task( lv_task_t * task );
 
 void mqtt_callback(char* topic, byte* payload, unsigned int length) {
     time_t now;
@@ -324,7 +326,8 @@ void omero_main_tile_setup( uint32_t tile_num ) {
 
     wifictl_register_cb( WIFICTL_CONNECT_IP | WIFICTL_OFF_REQUEST | WIFICTL_OFF | WIFICTL_DISCONNECT , omero_wifictl_event_cb, "omero" );
     // create an task that runs every secound
-    _omero_main_task = lv_task_create( omero_main_task, 50, LV_TASK_PRIO_HIGHEST, NULL );
+    //_omero_main_task = lv_task_create( omero_main_task, 50, LV_TASK_PRIO_HIGHEST, NULL );
+    powermgm_register_loop_cb( POWERMGM_SILENCE_WAKEUP | POWERMGM_STANDBY | POWERMGM_WAKEUP, omero_powermgm_event_cb, "Omero app loop" );
 }
 
 void reconnect(){
@@ -381,7 +384,7 @@ static void enter_omero_setup_event_cb( lv_obj_t * obj, lv_event_t event ) {
     }
 }
 
-void omero_main_task( lv_task_t * task ) {
+/*void omero_main_task( lv_task_t * task ) {
     // put your code here
     omero_config_t *omero_config = omero_get_config();
     if (!omero_mqtt_client.connected()) {
@@ -393,4 +396,19 @@ void omero_main_task( lv_task_t * task ) {
     } 
     omero_mqtt_client.loop();
 
+}
+*/
+
+bool omero_powermgm_event_cb( EventBits_t event, void *arg ) {
+    // put your code her
+    omero_config_t *omero_config = omero_get_config();
+    if (!omero_mqtt_client.connected()) {
+        Serial.println("reconnecting");
+        log_e("connect to mqtt server %s failed", omero_config->server );
+        app_set_indicator( omero_get_app_icon(), ICON_INDICATOR_FAIL );
+        widget_set_indicator( omero_get_widget_icon() , ICON_INDICATOR_FAIL );
+        reconnect();
+    } 
+    omero_mqtt_client.loop();
+return( true );
 }
