@@ -33,8 +33,10 @@
     #include "indev/mousewheel.h"
 #else
     #include <Arduino.h>
-    #ifdef M5PAPER
+    #if defined( M5PAPER )
         #include <M5EPD.h>
+    #elif defined( M5CORE2 )
+        #include <M5Core2.h>
     #elif defined( LILYGO_WATCH_2020_V1 ) || defined( LILYGO_WATCH_2020_V2 ) || defined( LILYGO_WATCH_2020_V3 )
         #include <TTGO.h>
 
@@ -77,8 +79,8 @@ callback_t *touch_callback = NULL;
 lv_indev_t *touch_indev = NULL;
 bool touched = false;
 
-static bool touch_getXY( int16_t &x, int16_t &y );
 static bool touch_read(lv_indev_drv_t * drv, lv_indev_data_t*data);
+bool touch_powermgm_loop_event_cb( EventBits_t event, void *arg );
 bool touch_powermgm_event_cb( EventBits_t event, void *arg );
 bool touch_send_event_cb( EventBits_t event, void *arg );
 
@@ -89,11 +91,13 @@ void touch_setup( void ) {
      */
     mouse_init();
 #else
-    #ifdef M5PAPER
+    #if defined( M5PAPER )
         /**
          * rotate toucscreen
          */
         M5.TP.SetRotation(90);
+    #elif defined( M5CORE2 )
+        M5.Touch.begin();
     #elif defined( LILYGO_WATCH_2020_V1 ) || defined( LILYGO_WATCH_2020_V2 ) || defined( LILYGO_WATCH_2020_V3 )
         TTGOClass *ttgo = TTGOClass::getWatch();
         /*
@@ -142,6 +146,7 @@ void touch_setup( void ) {
      * register powermgm callback function
      */
     powermgm_register_cb( POWERMGM_SILENCE_WAKEUP | POWERMGM_STANDBY | POWERMGM_WAKEUP | POWERMGM_ENABLE_INTERRUPTS | POWERMGM_DISABLE_INTERRUPTS , touch_powermgm_event_cb, "touch" );
+    powermgm_register_loop_cb( POWERMGM_STANDBY , touch_powermgm_loop_event_cb, "touch powermgm loop" );
 }
 
 bool touch_register_cb( EventBits_t event, CALLBACK_FUNC callback_func, const char *id ) {
@@ -168,32 +173,97 @@ bool touch_send_event_cb( EventBits_t event, void *arg ) {
   return( callback_send_no_log( touch_callback, event, arg ) );
 }
 
+bool touch_powermgm_loop_event_cb( EventBits_t event, void *arg ) {
+    bool retval = false;
+
+    #ifdef NATIVE_64BIT
+
+    #else
+        #if defined ( M5CORE2 )
+            switch( event ) {
+                case POWERMGM_STANDBY:
+                    M5.Touch.update();
+                    if ( M5.Touch.ispressed() ) {
+                        powermgm_set_event( POWERMGM_WAKEUP_REQUEST );
+                    }              
+                    retval = true;
+                    break;
+                case POWERMGM_WAKEUP:
+                    retval = true;
+                    break;
+                case POWERMGM_SILENCE_WAKEUP:
+                    M5.Touch.update();
+                    if ( M5.Touch.ispressed() ) {
+                        powermgm_set_event( POWERMGM_WAKEUP_REQUEST );
+                    }              
+                    retval = true;        
+                    break;
+            }
+        #else
+            retval = true;
+        #endif
+    #endif
+    return( retval );
+}
+
 bool touch_powermgm_event_cb( EventBits_t event, void *arg ) {
+    bool retval = false;
+
     #ifdef NATIVE_64BIT
         switch( event ) {
-            case POWERMGM_STANDBY:          log_i("go standby");
-                                            break;
-            case POWERMGM_WAKEUP:           log_i("go wakeup");
-                                            break;
-            case POWERMGM_SILENCE_WAKEUP:   log_i("go silence wakeup");
-                                            break;
-            case POWERMGM_ENABLE_INTERRUPTS:
-                                            break;
-            case POWERMGM_DISABLE_INTERRUPTS:
-                                            break;
+            case POWERMGM_STANDBY:              log_i("go standby");
+                                                retval = true;
+                                                break;
+            case POWERMGM_WAKEUP:               log_i("go wakeup");
+                                                retval = true;
+                                                break;
+            case POWERMGM_SILENCE_WAKEUP:       log_i("go silence wakeup");
+                                                retval = true;
+                                                break;
+            case POWERMGM_ENABLE_INTERRUPTS:    retval = true;
+                                                break;
+            case POWERMGM_DISABLE_INTERRUPTS:   retval = true;
+                                                break;
         }
     #else
         #if defined( M5PAPER ) || defined( LILYGO_WATCH_2021 )
             switch( event ) {
                 case POWERMGM_STANDBY:          log_i("go standby");
+                                                retval = true;
                                                 break;
                 case POWERMGM_WAKEUP:           log_i("go wakeup");
+                                                retval = true;
                                                 break;
                 case POWERMGM_SILENCE_WAKEUP:   log_i("go silence wakeup");
+                                                retval = true;
                                                 break;
                 case POWERMGM_ENABLE_INTERRUPTS:
+                                                retval = true;
                                                 break;
                 case POWERMGM_DISABLE_INTERRUPTS:
+                                                retval = true;
+                                                break;
+            }
+        #elif defined( M5CORE2 )
+            switch( event ) {
+                case POWERMGM_STANDBY:          log_i("go standby");
+                                                /**
+                                                 * block standby so is there no another option to handle
+                                                 * wakeup by touch. no real button :(
+                                                 */
+                                                retval = false;
+                                                break;
+                case POWERMGM_WAKEUP:           log_i("go wakeup");
+                                                retval = true;
+                                                break;
+                case POWERMGM_SILENCE_WAKEUP:   log_i("go silence wakeup");
+                                                retval = true;
+                                                break;
+                case POWERMGM_ENABLE_INTERRUPTS:
+                                                retval = true;
+                                                break;
+                case POWERMGM_DISABLE_INTERRUPTS:
+                                                retval = true;
                                                 break;
             }
         #elif defined( LILYGO_WATCH_2020_V1 ) || defined( LILYGO_WATCH_2020_V2 ) || defined( LILYGO_WATCH_2020_V3 )
@@ -204,6 +274,7 @@ bool touch_powermgm_event_cb( EventBits_t event, void *arg ) {
                                                     ttgo->touchToMonitor();
                                                     touch_lock_give();
                                                 }
+                                                retval = true;
                                                 break;
                 case POWERMGM_WAKEUP:           log_i("go wakeup");
 
@@ -214,22 +285,26 @@ bool touch_powermgm_event_cb( EventBits_t event, void *arg ) {
                                                     ttgo->touchToMonitor();
                                                     touch_lock_give();
                                                 }
+                                                retval = true;
                                                 break;
                 case POWERMGM_SILENCE_WAKEUP:   log_i("go silence wakeup");
+                                                retval = true;
                                                 break;
                 case POWERMGM_ENABLE_INTERRUPTS:
                                                 attachInterrupt( TOUCH_INT, &touch_irq, FALLING );
+                                                retval = true;
                                                 break;
                 case POWERMGM_DISABLE_INTERRUPTS:
                                                 detachInterrupt( TOUCH_INT );
+                                                retval = true;
                                                 break;
             }
         #endif
     #endif
-    return( true );
+    return( retval );
 }
 
-static bool touch_getXY( int16_t &x, int16_t &y ) {
+bool touch_getXY( int16_t &x, int16_t &y ) {
     
     /**
      * disable touch when we are in standby or silence wakeup
@@ -240,7 +315,7 @@ static bool touch_getXY( int16_t &x, int16_t &y ) {
 
     #ifdef NATIVE_64BIT
     #else
-        #ifdef M5PAPER
+        #if defined( M5PAPER )
             if ( M5.TP.avaliable() ) {
                 if( !M5.TP.isFingerUp() ) {
                     touched = true;
@@ -254,6 +329,21 @@ static bool touch_getXY( int16_t &x, int16_t &y ) {
                     return( false );
                 }
             }
+        #elif defined( M5CORE2 )
+            M5.Touch.update();
+
+            if ( M5.Touch.ispressed() ) {
+                Point coordinate;
+                coordinate = M5.Touch.getPressPoint();            
+                x = coordinate.x;
+                y = coordinate.y;
+                touched = true;
+            }
+            else {
+                touched = false;
+                return( false );
+            }
+
         #elif defined( LILYGO_WATCH_2020_V1 ) || defined( LILYGO_WATCH_2020_V2 ) || defined( LILYGO_WATCH_2020_V3 )
             TTGOClass *ttgo = TTGOClass::getWatch();
             static bool touch_press = false;
@@ -286,13 +376,6 @@ static bool touch_getXY( int16_t &x, int16_t &y ) {
                 if ( display_get_vibe() )
                     motor_vibe( 3 );
             }
-            /*
-            * issue https://github.com/sharandac/My-TTGO-Watch/issues/18 fix
-            */
-            float temp_x = ( x - ( lv_disp_get_hor_res( NULL ) / 2 ) ) * 1.15;
-            float temp_y = ( y - ( lv_disp_get_ver_res( NULL ) / 2 ) ) * 1.0;
-            x = temp_x + ( lv_disp_get_hor_res( NULL ) / 2 );
-            y = temp_y + ( lv_disp_get_ver_res( NULL ) / 2 );
         #elif defined( LILYGO_WATCH_2021 )
             static bool touchState;
             touchState = TouchSensor.TouchInt();
@@ -313,10 +396,12 @@ static bool touch_getXY( int16_t &x, int16_t &y ) {
 }
 
 static bool touch_read(lv_indev_drv_t * drv, lv_indev_data_t*data) {
+    bool retval = false;
+    
     #ifdef NATIVE_64BIT
-        return( mouse_read( drv, data ) );
+        retval = mouse_read( drv, data );
     #else
-        #ifdef M5PAPER
+        #if defined( M5PAPER )
             if ( M5.TP.avaliable() ) {
                 if( !M5.TP.isFingerUp() ) {
                     M5.TP.update();
@@ -330,6 +415,32 @@ static bool touch_read(lv_indev_drv_t * drv, lv_indev_data_t*data) {
                     data->state = LV_INDEV_STATE_REL;
                 }
             }
+        #elif defined( M5CORE2 )
+            static int16_t last_x = 0;
+            static int16_t last_y = 0;
+
+            M5.Touch.update();
+
+            if ( M5.Touch.ispressed() ) {
+                Point coordinate;
+                coordinate = M5.Touch.getPressPoint();
+                if ( coordinate.x == -1 || coordinate.y == -1 ) {
+                    data->state = LV_INDEV_STATE_REL;
+                    data->point.x = last_x;
+                    data->point.y = last_y;
+                }
+                else {
+                    data->point.x = coordinate.x;
+                    data->point.y = coordinate.y;
+                    last_x = coordinate.x;
+                    last_y = coordinate.y;
+                    data->state = LV_INDEV_STATE_PR;
+                }
+            }
+            else {
+                data->state = LV_INDEV_STATE_REL;
+            }
+
         #elif defined( LILYGO_WATCH_2020_V1 ) || defined( LILYGO_WATCH_2020_V2 ) || defined( LILYGO_WATCH_2020_V3 )
             /*
             * We use two flags, one changes in the interrupt handler
@@ -345,35 +456,25 @@ static bool touch_read(lv_indev_drv_t * drv, lv_indev_data_t*data) {
             /*
             * check for an touch interrupt
             */
-//            if ( touched ) {
-                data->state = touch_getXY( data->point.x, data->point.y ) ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
-                touched = digitalRead( TOUCH_INT ) == LOW;
-                if ( !touched ) {
-                    /*
-                    * Save power by switching to monitor mode now instead of waiting for 30 seconds.
-                    */
-                    if ( touch_lock_take() ) {
-                        TTGOClass::getWatch()->touchToMonitor();
-                        touch_lock_give();
-                    }
+            data->state = touch_getXY( data->point.x, data->point.y ) ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
+            touched = digitalRead( TOUCH_INT ) == LOW;
+            if ( !touched ) {
+                /*
+                * Save power by switching to monitor mode now instead of waiting for 30 seconds.
+                */
+                if ( touch_lock_take() ) {
+                    TTGOClass::getWatch()->touchToMonitor();
+                    touch_lock_give();
                 }
-                /**
-                 * send touch event
-                 */
-                touch_t touch;
-                touch.touched = touched;
-                touch.x_coor = data->point.x;
-                touch.y_coor = data->point.y;
-                /**
-                 * discard when callback return true
-                 */
-                if ( touch_send_event_cb( TOUCH_UPDATE, (void*)&touch ) ) {
-                    data->state = LV_INDEV_STATE_REL;
-                }
-//            }
-//            else {
-//                data->state = LV_INDEV_STATE_REL;
-//            }
+            }
+            /*
+            * issue https://github.com/sharandac/My-TTGO-Watch/issues/18 fix
+            */
+            float temp_x = ( data->point.x - ( lv_disp_get_hor_res( NULL ) / 2 ) ) * 1.15;
+            float temp_y = ( data->point.y - ( lv_disp_get_ver_res( NULL ) / 2 ) ) * 1.0;
+            data->point.x = temp_x + ( lv_disp_get_hor_res( NULL ) / 2 );
+            data->point.y = temp_y + ( lv_disp_get_ver_res( NULL ) / 2 );
+
         #elif defined( LILYGO_WATCH_2021 )
             bool isTouch = TouchSensor.getTouchType();
             data->state = isTouch ? LV_INDEV_STATE_PR : LV_INDEV_STATE_REL;
@@ -384,6 +485,19 @@ static bool touch_read(lv_indev_drv_t * drv, lv_indev_data_t*data) {
             }
         #endif
     #endif
+    /**
+     * send touch event
+     */
+    touch_t touch;
+    touch.touched = data->state;
+    touch.x_coor = data->point.x;
+    touch.y_coor = data->point.y;
+    /**
+     * discard when callback return true
+     */
+    if ( touch_send_event_cb( TOUCH_UPDATE, (void*)&touch ) ) {
+        data->state = LV_INDEV_STATE_REL;
+    }
 
-    return( false );
+    return( retval );
 }

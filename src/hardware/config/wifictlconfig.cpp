@@ -23,11 +23,11 @@
 #include "config.h"
 #include "wifictlconfig.h"
 #include "utils/alloc.h"
+#include "utils/webserver/webserver.h"
+#include "utils/ftpserver/ftpserver.h"
 
 #ifdef NATIVE_64BIT
     #include "utils/logging.h"
-    #include "utils/webserver/webserver.h"
-    #include "utils/ftpserver/ftpserver.h"
 #endif
 
 wifictl_config_t::wifictl_config_t() : BaseJsonConfig( WIFICTL_JSON_CONFIG_FILE ) {}
@@ -37,7 +37,7 @@ bool wifictl_config_t::onSave(JsonDocument& doc) {
      * save config structure into json file
      */
     doc["autoon"] = autoon;
-
+    doc["hostname"] = hostname;
     doc["webserver"] = webserver;
     doc["ftpserver"] = ftpserver;
     doc["ftpuser"] = ftpuser;
@@ -63,6 +63,13 @@ bool wifictl_config_t::onLoad(JsonDocument& doc) {
             while(true);
         }
     }
+    if ( networklist_tried == NULL ) {
+        networklist_tried = ( wifictl_networklist* )CALLOC( sizeof( wifictl_networklist ) * NETWORKLIST_ENTRYS, 1 );
+        if( !networklist_tried ) {
+            log_e("wifictl_networklist_tried calloc faild");
+            while(true);
+        }
+    }
     /*
      * clean networklist
      */
@@ -75,9 +82,11 @@ bool wifictl_config_t::onLoad(JsonDocument& doc) {
      */
     autoon = doc["autoon"] | true;
     enable_on_standby = doc["enable_on_standby"] | false;
+    if ( doc["hostname"] ) {
+        strncpy( hostname, doc["hostname"], sizeof( hostname ) );
+    }
 
     webserver = doc["webserver"] | false;
-
     ftpserver = doc["ftpserver"] | false;
     if ( doc["ftpuser"] ) {
         strncpy( ftpuser, doc["ftpuser"], sizeof( ftpuser ) );
